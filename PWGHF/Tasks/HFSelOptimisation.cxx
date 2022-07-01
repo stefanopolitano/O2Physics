@@ -338,8 +338,8 @@ struct HfSelOptimisation {
                 case o2::aod::hf_cand_prong3::DecayType::LcToPKPi:
                   testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::LcToPKPi, 0>(cand3Prong, tracks);
                   break;
-                case o2::aod::hf_cand_prong3::DecayType::DsToPiKK:
-                  testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::DsToPiKK, 0>(cand3Prong, tracks);
+                case o2::aod::hf_cand_prong3::DecayType::DsToKKPi:
+                  testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::DsToKKPi, 0>(cand3Prong, tracks);
                   break;
                 case o2::aod::hf_cand_prong3::DecayType::XicToPKPi:
                   testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::XicToPKPi, 0>(cand3Prong, tracks);
@@ -354,8 +354,8 @@ struct HfSelOptimisation {
                 case o2::aod::hf_cand_prong3::DecayType::LcToPKPi:
                   testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::LcToPKPi, 1>(cand3Prong, tracks);
                   break;
-                case o2::aod::hf_cand_prong3::DecayType::DsToPiKK:
-                  testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::DsToPiKK, 1>(cand3Prong, tracks);
+                case o2::aod::hf_cand_prong3::DecayType::DsToKKPi:
+                  testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::DsToKKPi, 1>(cand3Prong, tracks);
                   break;
                 case o2::aod::hf_cand_prong3::DecayType::XicToPKPi:
                   testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::XicToPKPi, 1>(cand3Prong, tracks);
@@ -371,8 +371,8 @@ struct HfSelOptimisation {
               case o2::aod::hf_cand_prong3::DecayType::LcToPKPi:
                 testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::LcToPKPi, 2>(cand3Prong, tracks);
                 break;
-              case o2::aod::hf_cand_prong3::DecayType::DsToPiKK:
-                testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::DsToPiKK, 2>(cand3Prong, tracks);
+              case o2::aod::hf_cand_prong3::DecayType::DsToKKPi:
+                testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::DsToKKPi, 2>(cand3Prong, tracks);
                 break;
               case o2::aod::hf_cand_prong3::DecayType::XicToPKPi:
                 testSelections3Prong<o2::aod::hf_cand_prong3::DecayType::XicToPKPi, 2>(cand3Prong, tracks);
