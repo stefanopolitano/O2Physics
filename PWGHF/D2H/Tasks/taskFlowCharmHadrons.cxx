@@ -21,6 +21,7 @@
 
 #include "Common/Core/EventPlaneHelper.h"
 #include "Common/DataModel/Qvectors.h"
+#include "PWGLF/DataModel/EPCalibrationTables.h"
 
 #include "PWGHF/Core/HfHelper.h"
 #include "PWGHF/DataModel/CandidateSelectionTables.h"
@@ -55,6 +56,7 @@ struct HfTaskFlowCharmHadrons {
   Configurable<int> selectionFlag{"selectionFlag", 1, "Selection Flag for hadron (e.g. 1 for skimming, 3 for topo. and kine., 7 for PID)"};
   Configurable<bool> storeMl{"storeMl", false, "Flag to store ML scores"};
   Configurable<bool> saveEpResoHisto{"saveEpResoHisto", false, "Flag to save event plane resolution histogram"};
+  Configurable<bool> useLfQvec{"useLfQvec", false, "Flag to use LF Q vector. If true, Q vectors are calculated from the LF EPCalibrationTables task"};
   Configurable<std::vector<int>> classMl{"classMl", {0, 2}, "Indexes of BDT scores to be stored. Two indexes max."};
 
   ConfigurableAxis thnConfigAxisInvMass{"thnConfigAxisInvMass", {100, 1.78, 2.05}, ""};
@@ -74,7 +76,7 @@ struct HfTaskFlowCharmHadrons {
   using CandLcDataWMl = soa::Filtered<soa::Join<aod::HfCand3Prong, aod::HfSelLc, aod::HfMlLcToPKPi>>;
   using CandD0DataWMl = soa::Filtered<soa::Join<aod::HfCand2Prong, aod::HfSelD0, aod::HfMlD0>>;
   using CandD0Data = soa::Filtered<soa::Join<aod::HfCand2Prong, aod::HfSelD0>>;
-  using CollsWithQvecs = soa::Join<aod::Collisions, aod::EvSels, aod::QvectorFT0Cs, aod::QvectorFT0As, aod::QvectorFT0Ms, aod::QvectorFV0As, aod::QvectorBPoss, aod::QvectorBNegs, aod::CentFV0As, aod::CentFT0Ms, aod::CentFT0As, aod::CentFT0Cs>;
+  using CollsWithQvecs = soa::Join<aod::Collisions, aod::EvSels, aod::QvectorFT0Cs, aod::QvectorFT0As, aod::QvectorFT0Ms, aod::QvectorFV0As, aod::QvectorBPoss, aod::QvectorBNegs, aod::CentFV0As, aod::CentFT0Ms, aod::CentFT0As, aod::CentFT0Cs, aod::EPCalibrationTables>;
 
   Filter filterSelectDsCandidates = aod::hf_sel_candidate_ds::isSelDsToKKPi >= selectionFlag || aod::hf_sel_candidate_ds::isSelDsToPiKK >= selectionFlag;
   Filter filterSelectDplusCandidates = aod::hf_sel_candidate_dplus::isSelDplusToPiKPi >= selectionFlag;
@@ -129,6 +131,17 @@ struct HfTaskFlowCharmHadrons {
     registry.add("spReso/hSpResoFV0aTPCpos", "hSpResoFV0aTPCpos; centrality; Q_{FV0a} #bullet Q_{TPCpos}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
     registry.add("spReso/hSpResoFV0aTPCneg", "hSpResoFV0aTPCneg; centrality; Q_{FV0a} #bullet Q_{TPCneg}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
     registry.add("spReso/hSpResoTPCposTPCneg", "hSpResoTPCposTPCneg; centrality; Q_{TPCpos} #bullet Q_{TPCneg}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
+  
+    if (useLfQvec) {
+      registry.add("spResoLf/hSpResoFT0cFT0a", "hSpResoFT0cFT0a; centrality; Q_{FT0c} #bullet Q_{FT0a}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
+      registry.add("spResoLf/hSpResoFT0cTPCpos", "hSpResoFT0cTPCpos; centrality; Q_{FT0c} #bullet Q_{TPCpos}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
+      registry.add("spResoLf/hSpResoFT0cTPCneg", "hSpResoFT0cTPCneg; centrality; Q_{FT0c} #bullet Q_{TPCneg}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
+      registry.add("spResoLf/hSpResoFT0cTPC", "hSpResoFT0cTPC; centrality; Q_{FT0c} #bullet Q_{TPC}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
+      registry.add("spResoLf/hSpResoFT0aTPCpos", "hSpResoFT0aTPCpos; centrality; Q_{FT0a} #bullet Q_{TPCpos}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
+      registry.add("spResoLf/hSpResoFT0aTPCneg", "hSpResoFT0aTPCneg; centrality; Q_{FT0a} #bullet Q_{TPCneg}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
+      registry.add("spResoLf/hSpResoFT0aTPC", "hSpResoFT0aTPC; centrality; Q_{FT0a} #bullet Q_{TPC}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
+      registry.add("spResoLf/hSpResoTPCposTPCneg", "hSpResoTPCposTPCneg; centrality; Q_{TPCpos} #bullet Q_{TPCneg}", {HistType::kTH2F, {thnAxisCent, thnAxisScalarProd}});
+    }
 
     if (saveEpResoHisto) {
       registry.add("epReso/hEpResoFT0cFT0a", "hEpResoFT0cFT0a; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
@@ -144,6 +157,17 @@ struct HfTaskFlowCharmHadrons {
       registry.add("epReso/hEpResoFV0aTPCpos", "hEpResoFV0aTPCpos; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
       registry.add("epReso/hEpResoFV0aTPCneg", "hEpResoFV0aTPCneg; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
       registry.add("epReso/hEpResoTPCposTPCneg", "hEpResoTPCposTPCneg; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
+
+      if (useLfQvec) {
+        registry.add("epResoLf/hEpResoFT0cFT0a", "hEpResoFT0cFT0a; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
+        registry.add("epResoLf/hEpResoFT0cTPCpos", "hEpResoFT0cTPCpos; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
+        registry.add("epResoLf/hEpResoFT0cTPCneg", "hEpResoFT0cTPCneg; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
+        registry.add("epResoLf/hEpResoFT0cTPC", "hEpResoFT0cTPC; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
+        registry.add("epResoLf/hEpResoFT0aTPCpos", "hEpResoFT0aTPCpos; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
+        registry.add("epResoLf/hEpResoFT0aTPCneg", "hEpResoFT0aTPCneg; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
+        registry.add("epResoLf/hEpResoFT0aTPC", "hEpResoFT0aTPC; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
+        registry.add("epResoLf/hEpResoTPCposTPCneg", "hEpResoTPCposTPCneg; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
+      }
     }
   }; // end init
 
@@ -255,40 +279,120 @@ struct HfTaskFlowCharmHadrons {
     float xQVec = -999.;
     float yQVec = -999.;
     float amplQVec = -999.;
-    switch (qvecDetector) {
+    if (!useLfQvec) {
+      switch (qvecDetector) {
+        case QvecEstimator::FV0A:
+          xQVec = collision.qvecFV0ARe();
+          yQVec = collision.qvecFV0AIm();
+          break;
+        case QvecEstimator::FT0M:
+          xQVec = collision.qvecFT0MRe();
+          yQVec = collision.qvecFT0MIm();
+          break;
+        case QvecEstimator::FT0A:
+          xQVec = collision.qvecFT0ARe();
+          yQVec = collision.qvecFT0AIm();
+          break;
+        case QvecEstimator::FT0C:
+          xQVec = collision.qvecFT0CRe();
+          yQVec = collision.qvecFT0CIm();
+          break;
+        case QvecEstimator::TPCPos:
+          xQVec = collision.qvecBPosRe();
+          yQVec = collision.qvecBPosIm();
+          amplQVec = collision.nTrkBPos();
+          break;
+        case QvecEstimator::TPCNeg:
+          xQVec = collision.qvecBNegRe();
+          yQVec = collision.qvecBNegIm();
+          amplQVec = collision.nTrkBNeg();
+          break;
+        default:
+          LOG(warning) << "Q vector estimator not valid. Please choose between FV0A, FT0M, FT0A, FT0C, TPC Pos, TPC Neg. Fallback to FV0A";
+          xQVec = collision.qvecFV0ARe();
+          yQVec = collision.qvecFV0AIm();
+          break;
+      }
+    } else {
+      switch (qvecDetector)
+      {
       case QvecEstimator::FV0A:
-        xQVec = collision.qvecFV0ARe();
-        yQVec = collision.qvecFV0AIm();
+        LOG(warning) << "FV0A not valid in LF task as  Qvector estimator. Fallback to FT0C";
+        xQVec = std::cos(harmonic * collision.psiFT0C());
+        yQVec = std::sin(harmonic * collision.psiFT0C());
         break;
       case QvecEstimator::FT0M:
-        xQVec = collision.qvecFT0MRe();
-        yQVec = collision.qvecFT0MIm();
+        LOG(warning) << "FT0M not valid in LF task as  Qvector estimator. Fallback to FT0C";
+        xQVec = std::cos(harmonic * collision.psiFT0C());
+        yQVec = std::sin(harmonic * collision.psiFT0C());
         break;
       case QvecEstimator::FT0A:
-        xQVec = collision.qvecFT0ARe();
-        yQVec = collision.qvecFT0AIm();
+        xQVec = std::cos(harmonic * collision.psiFT0A());
+        yQVec = std::sin(harmonic * collision.psiFT0A());
         break;
       case QvecEstimator::FT0C:
-        xQVec = collision.qvecFT0CRe();
-        yQVec = collision.qvecFT0CIm();
+        xQVec = std::cos(harmonic * collision.psiFT0C());
+        yQVec = std::sin(harmonic * collision.psiFT0C());
         break;
       case QvecEstimator::TPCPos:
-        xQVec = collision.qvecBPosRe();
-        yQVec = collision.qvecBPosIm();
-        amplQVec = collision.nTrkBPos();
+        xQVec = std::cos(harmonic * collision.psiTPCR());
+        yQVec = std::sin(harmonic * collision.psiTPCR());
+        LOG(warning) << "Amplitude of the Q vector is not available in LF task for TPC Pos. Fallback to -999.";
+        amplQVec = -999.;
         break;
       case QvecEstimator::TPCNeg:
-        xQVec = collision.qvecBNegRe();
-        yQVec = collision.qvecBNegIm();
-        amplQVec = collision.nTrkBNeg();
+        xQVec = std::cos(harmonic * collision.psiTPCL());
+        yQVec = std::sin(harmonic * collision.psiTPCL());
+        LOG(warning) << "Amplitude of the Q vector is not available in LF task for TPC Neg. Fallback to -999.";
+        amplQVec = -999.;
         break;
       default:
-        LOG(warning) << "Q vector estimator not valid. Please choose between FV0A, FT0M, FT0A, FT0C, TPC Pos, TPC Neg. Fallback to FV0A";
-        xQVec = collision.qvecFV0ARe();
-        yQVec = collision.qvecFV0AIm();
+        LOG(warning) << "Q vector estimator not valid. Please choose between FT0C, FT0A, TPC Pos, TPC Neg. Fallback to FT0C";
+        xQVec = std::cos(harmonic * collision.psiFT0C());
+        yQVec = std::sin(harmonic * collision.psiFT0C());
         break;
+      }
     }
     return {xQVec, yQVec, amplQVec};
+  }
+
+  /// Get the event plane
+  /// \param xQVec is the X component of the Q vector
+  /// \param yQVec is the Y component of the Q vector
+  /// \param harmonic is the harmonic number
+  /// \param collision is the collision with the event plane information
+  float getEventPlane(float xQVec, float yQvec, int harmonic, CollsWithQvecs::iterator const& collision)
+  {
+    if (!useLfQvec) {
+      return epHelper.GetEventPlane(xQVec, yQvec, harmonic);
+    } else {
+      switch (qvecDetector) {
+        case QvecEstimator::FV0A:
+          LOG (warning) << "Event-plane resolution not available in LF task for FV0A. Fallback to FT0C";
+          return collision.psiFT0C();
+          break;
+        case QvecEstimator::FT0M:
+          LOG (warning) << "Event-plane resolution not available in LF task for FT0M. Fallback to FT0C";
+          return collision.psiFT0C();
+          break;
+        case QvecEstimator::FT0A:
+          return collision.psiFT0A();
+          break;
+        case QvecEstimator::FT0C:
+          return collision.psiFT0C();
+          break;
+        case QvecEstimator::TPCPos:
+          return collision.psiTPCR();
+          break;
+        case QvecEstimator::TPCNeg:
+          return collision.psiTPCL();
+          break;
+        default:
+          LOG(warning) << "Q vector estimator not valid in LF task. Please choose between FV0A, FT0M, FT0A, FT0C, TPC Pos, TPC Neg. Fallback to FT0C";
+          return collision.psiFT0C();
+          break;
+      }
+    }
   }
 
   /// Compute the scalar product
@@ -302,7 +406,7 @@ struct HfTaskFlowCharmHadrons {
     float xQVec = qVecs[0];
     float yQVec = qVecs[1];
     float amplQVec = qVecs[2];
-    float evtPl = epHelper.GetEventPlane(xQVec, yQVec, harmonic);
+    float evtPl = getEventPlane(xQVec, yQVec, harmonic, collision);
     float cent = getCentrality(collision);
     int nProngs = 3;
 
@@ -540,6 +644,40 @@ struct HfTaskFlowCharmHadrons {
       registry.fill(HIST("epReso/hEpResoFV0aTPCpos"), centrality, std::cos(harmonic * getDeltaPsiInRange(epFV0a, epBPoss)));
       registry.fill(HIST("epReso/hEpResoFV0aTPCneg"), centrality, std::cos(harmonic * getDeltaPsiInRange(epFV0a, epBNegs)));
       registry.fill(HIST("epReso/hEpResoTPCposTPCneg"), centrality, std::cos(harmonic * getDeltaPsiInRange(epBPoss, epBNegs)));
+    }
+
+    if (useLfQvec) {
+      float xQVecFT0aNonDef = std::cos(harmonic * collision.psiFT0A());
+      float yQVecFT0aNonDef = std::sin(harmonic * collision.psiFT0A());
+      float xQVecFT0cNonDef = std::cos(harmonic * collision.psiFT0C());
+      float yQVecFT0cNonDef = std::sin(harmonic * collision.psiFT0C());
+      float xQVecBPosNonDef = std::cos(harmonic * collision.psiTPCR());
+      float yQVecBPosNonDef = std::sin(harmonic * collision.psiTPCR());
+      float xQVecBNegNonDef = std::cos(harmonic * collision.psiTPCL());
+      float yQVecBNegNonDef = std::sin(harmonic * collision.psiTPCL());
+      float xQVecFV0aNonDef = std::cos(harmonic * collision.psiTPC());
+      float yQVecFV0aNonDef = std::sin(harmonic * collision.psiTPC());
+
+      registry.fill(HIST("spResoLf/hSpResoFT0cFT0a"), centrality, xQVecFT0cNonDef * xQVecFT0aNonDef + yQVecFT0cNonDef * yQVecFT0aNonDef);
+      registry.fill(HIST("spResoLf/hSpResoFT0cTPCpos"), centrality, xQVecFT0cNonDef * xQVecBPosNonDef + yQVecFT0cNonDef * yQVecBPosNonDef);
+      registry.fill(HIST("spResoLf/hSpResoFT0cTPCneg"), centrality, xQVecFT0cNonDef * xQVecBNegNonDef + yQVecFT0cNonDef * yQVecBNegNonDef);
+      registry.fill(HIST("spResoLf/hSpResoFT0cTPC"), centrality, xQVecFT0cNonDef * xQVecFV0aNonDef + yQVecFT0cNonDef * yQVecFV0aNonDef);
+      registry.fill(HIST("spResoLf/hSpResoFT0aFV0a"), centrality, xQVecFT0aNonDef * xQVecFV0aNonDef + yQVecFT0aNonDef * yQVecFV0aNonDef);
+      registry.fill(HIST("spResoLf/hSpResoFT0aTPCpos"), centrality, xQVecFT0aNonDef * xQVecBPosNonDef + yQVecFT0aNonDef * yQVecBPosNonDef);
+      registry.fill(HIST("spResoLf/hSpResoFT0aTPCneg"), centrality, xQVecFT0aNonDef * xQVecBNegNonDef + yQVecFT0aNonDef * yQVecBNegNonDef);
+      registry.fill(HIST("spResoLf/hSpResoFT0aTPC"), centrality, xQVecFT0aNonDef * xQVecFV0aNonDef + yQVecFT0aNonDef * yQVecFV0aNonDef);
+      registry.fill(HIST("spResoLf/hSpResoTPCposTPCneg"), centrality, xQVecBPosNonDef * xQVecBNegNonDef + yQVecBPosNonDef * yQVecBNegNonDef);
+
+      if (saveEpResoHisto) {
+        registry.fill(HIST("epResoLf/hEpResoFT0cFT0a"), centrality, std::cos(harmonic * getDeltaPsiInRange(collision.psiFT0C(), collision.psiFT0A())));
+        registry.fill(HIST("epResoLf/hEpResoFT0cTPCpos"), centrality, std::cos(harmonic * getDeltaPsiInRange(collision.psiFT0C(), collision.psiTPCR())));
+        registry.fill(HIST("epResoLf/hEpResoFT0cTPCneg"), centrality, std::cos(harmonic * getDeltaPsiInRange(collision.psiFT0C(), collision.psiTPCL())));
+        registry.fill(HIST("epResoLf/hEpResoFT0cTPC"), centrality, std::cos(harmonic * getDeltaPsiInRange(collision.psiFT0C(), collision.psiTPC())));
+        registry.fill(HIST("epResoLf/hEpResoFT0aTPCpos"), centrality, std::cos(harmonic * getDeltaPsiInRange(collision.psiFT0A(), collision.psiTPCR())));
+        registry.fill(HIST("epResoLf/hEpResoFT0aTPCneg"), centrality, std::cos(harmonic * getDeltaPsiInRange(collision.psiFT0A(), collision.psiTPCL())));
+        registry.fill(HIST("epResoLf/hEpResoFT0aTPC"), centrality, std::cos(harmonic * getDeltaPsiInRange(collision.psiFT0A(), collision.psiTPC())));
+        registry.fill(HIST("epResoLf/hEpResoTPCposTPCneg"), centrality, std::cos(harmonic * getDeltaPsiInRange(collision.psiTPCR(), collision.psiTPCL())));
+      }
     }
   }
   PROCESS_SWITCH(HfTaskFlowCharmHadrons, processResolution, "Process resolution", false);
