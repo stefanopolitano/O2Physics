@@ -20,18 +20,22 @@
 #include "Framework/runDataProcessing.h"
 
 #include "Common/Core/EventPlaneHelper.h"
+#include "Common/CCDB/EventSelectionParams.h"
 #include "Common/DataModel/Qvectors.h"
 
 #include "PWGHF/Core/HfHelper.h"
+#include "PWGHF/Utils/utilsEvSelHf.h"
 #include "PWGHF/Core/CentralityEstimation.h"
 #include "PWGHF/DataModel/CandidateSelectionTables.h"
 #include "PWGHF/DataModel/CandidateReconstructionTables.h"
 
 using namespace o2;
 using namespace o2::aod;
+using namespace o2::aod::evsel;
 using namespace o2::framework;
 using namespace o2::framework::expressions;
 using namespace o2::hf_centrality;
+using namespace o2::hf_evsel;
 
 enum DecayChannel { DplusToPiKPi = 0,
                     DsToKKPi,
@@ -66,6 +70,8 @@ struct HfTaskFlowCharmHadrons {
   ConfigurableAxis thnConfigAxisScalarProd{"thnConfigAxisScalarProd", {100, 0., 1.}, ""};
   ConfigurableAxis thnConfigAxisMlOne{"thnConfigAxisMlOne", {1000, 0., 1.}, ""};
   ConfigurableAxis thnConfigAxisMlTwo{"thnConfigAxisMlTwo", {1000, 0., 1.}, ""};
+
+  HfEventSelection hfEvSel;
 
   using CandDsDataWMl = soa::Filtered<soa::Join<aod::HfCand3Prong, aod::HfSelDsToKKPi, aod::HfMlDsToKKPi>>;
   using CandDsData = soa::Filtered<soa::Join<aod::HfCand3Prong, aod::HfSelDsToKKPi>>;
@@ -146,6 +152,8 @@ struct HfTaskFlowCharmHadrons {
       registry.add("epReso/hEpResoFV0aTPCneg", "hEpResoFV0aTPCneg; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
       registry.add("epReso/hEpResoTPCposTPCneg", "hEpResoTPCposTPCneg; centrality; #Delta#Psi_{sub}", {HistType::kTH2F, {thnAxisCent, thnAxisCosNPhi}});
     }
+
+    hfEvSel.addHistograms(registry); // collision monitoring
   }; // end init
 
   /// Compute the Q vector for the candidate's tracks
@@ -198,6 +206,26 @@ struct HfTaskFlowCharmHadrons {
         deltaPsi += constants::math::TwoPI / harmonic;
     }
     return deltaPsi;
+  }
+
+  /// Get rejection mask for the event
+  /// \param collision is the collision with the event selection information
+  /// \param centrality is the centrality of the collision
+  uint16_t getRejectionMask(CollsWithQvecs::iterator const& collision, float& centrality)
+  {
+    switch (centEstimator) {
+    case CentralityEstimator::FV0A:
+      return hfEvSel.getHfCollisionRejectionMask<true, CentralityEstimator::FV0A>(collision, centrality);
+    case CentralityEstimator::FT0M:
+      return hfEvSel.getHfCollisionRejectionMask<true, CentralityEstimator::FT0M>(collision, centrality);
+    case CentralityEstimator::FT0A:
+      return hfEvSel.getHfCollisionRejectionMask<true, CentralityEstimator::FT0A>(collision, centrality);
+    case CentralityEstimator::FT0C:
+      return hfEvSel.getHfCollisionRejectionMask<true, CentralityEstimator::FT0C>(collision, centrality);
+    default:
+      LOG(warning) << "Centrality estimator not valid. Possible values are V0A, T0M, T0A, T0C. Fallback to V0A";
+      return hfEvSel.getHfCollisionRejectionMask<true, CentralityEstimator::FV0A>(collision, centrality);
+    }
   }
 
   /// Fill THnSparse
@@ -488,11 +516,13 @@ struct HfTaskFlowCharmHadrons {
   void processResolution(CollsWithQvecs::iterator const& collision)
   {
 
-    if (!collision.sel8() || std::abs(collision.posZ()) > zVtxMax) {
+    float centrality{-1.f};
+    uint16_t rejectionMask{0};
+    rejectionMask = getRejectionMask(collision, centrality);
+    if (!collision.sel8() || std::abs(collision.posZ()) > zVtxMax || rejectionMask != 0) {
       return;
     }
 
-    float centrality = getCentrality(collision);
     float xQVecFT0a = collision.qvecFT0ARe();
     float yQVecFT0a = collision.qvecFT0AIm();
     float xQVecFT0c = collision.qvecFT0CRe();
