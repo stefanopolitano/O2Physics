@@ -850,17 +850,24 @@ DECLARE_SOA_TABLE(DitracksExtra, "AOD", "RTDITRKEXTRA", //!
 // mft PID reduced data model
 namespace fwdpid
 {
-DECLARE_SOA_COLUMN(Pt, pt, float);   //!
-DECLARE_SOA_COLUMN(Eta, eta, float); //!
-DECLARE_SOA_COLUMN(Phi, phi, float); //!
-DECLARE_SOA_COLUMN(Sign, sign, int); //!
+DECLARE_SOA_COLUMN(TrackType1, tracktyp1, float);   //!
+DECLARE_SOA_COLUMN(TrackType2, tracktyp2, float);   //!
+DECLARE_SOA_COLUMN(Mass, mass, float);   //!
+DECLARE_SOA_COLUMN(MftClusterSizesAndTrackFlags1, mftClusterSizesAndTrackFlags1, uint64_t); //!
+DECLARE_SOA_COLUMN(MftClusterSizesAndTrackFlags2, mftClusterSizesAndTrackFlags2, uint64_t); //!
 } // namespace fwdpid
 
 DECLARE_SOA_TABLE(FwdPidsAll, "AOD", "RTFWDPIDALL", //!
-                  fwdtrack::TrackType, collision::PosX, collision::PosY, collision::PosZ, collision::NumContrib,
-                  fwdpid::Pt, fwdpid::Eta, fwdpid::Phi, fwdpid::Sign,
-                  reducedmft::MftClusterSizesAndTrackFlags,
-                  reducedmft::FwdDcaX, reducedmft::FwdDcaY, fwdtrack::Chi2MatchMCHMID, fwdtrack::Chi2MatchMCHMFT);
+                  fwdpid::TrackType1, fwdpid::TrackType2,
+                  collision::PosX, collision::PosY, collision::PosZ, collision::NumContrib,
+                  dilepton_track_index::Pt1, dilepton_track_index::Pt2, dilepton_track_index::Eta1, dilepton_track_index::Eta2,
+                  dilepton_track_index::Phi1, dilepton_track_index::Phi2, dilepton_track_index::Sign1, dilepton_track_index::Sign2,
+                  fwdpid::MftClusterSizesAndTrackFlags1, fwdpid::MftClusterSizesAndTrackFlags2,
+                  dilepton_track_index::FwdDcaX1, dilepton_track_index::FwdDcaX2,
+                  dilepton_track_index::FwdDcaY1, dilepton_track_index::FwdDcaY2,
+                  dilepton_track_index::Chi2MatchMCHMID1, dilepton_track_index::Chi2MatchMCHMID2,
+                  dilepton_track_index::Chi2MatchMCHMFT1, dilepton_track_index::Chi2MatchMCHMFT2,
+                  fwdpid::Mass);
 
 using FwdPidAll = FwdPidsAll::iterator;
 

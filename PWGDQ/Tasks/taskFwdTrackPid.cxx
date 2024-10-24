@@ -36,6 +36,7 @@
 #include "PWGDQ/Core/HistogramsLibrary.h"
 #include "PWGDQ/Core/CutsLibrary.h"
 #include "PWGDQ/Core/MixingLibrary.h"
+#include "PWGDQ/Utils/utilsMftPid.h"
 #include "DataFormatsParameters/GRPMagField.h"
 #include "Field/MagneticField.h"
 #include "TGeoGlobalMagField.h"
@@ -47,7 +48,65 @@
 using namespace o2;
 using namespace o2::framework;
 using namespace o2::framework::expressions;
-using namespace o2::aod;
+using namespace o2::dq_mftpid;
+// Some definitions
+namespace o2::aod
+{
+
+namespace dqanalysisflags
+{
+// TODO: the barrel amd muon selection columns are bit maps so unsigned types should be used, however, for now this is not supported in Filter expressions
+// TODO: For now in the tasks we just statically convert from unsigned int to int, which should be fine as long as we do
+//      not use a large number of bits (>=30)
+// Bcandidate columns for ML analysis of B->Jpsi+K
+DECLARE_SOA_COLUMN(MixingHash, mixingHash, int);
+DECLARE_SOA_COLUMN(IsEventSelected, isEventSelected, int);
+DECLARE_SOA_COLUMN(IsBarrelSelected, isBarrelSelected, int);
+DECLARE_SOA_COLUMN(IsMuonSelected, isMuonSelected, int);
+DECLARE_SOA_COLUMN(IsBarrelSelectedPrefilter, isBarrelSelectedPrefilter, int);
+DECLARE_SOA_COLUMN(IsPrefilterVetoed, isPrefilterVetoed, int);
+DECLARE_SOA_COLUMN(massBcandidate, MBcandidate, float);
+DECLARE_SOA_COLUMN(pTBcandidate, PtBcandidate, float);
+DECLARE_SOA_COLUMN(LxyBcandidate, lxyBcandidate, float);
+DECLARE_SOA_COLUMN(LxyzBcandidate, lxyzBcandidate, float);
+DECLARE_SOA_COLUMN(LzBcandidate, lzBcandidate, float);
+DECLARE_SOA_COLUMN(TauxyBcandidate, tauxyBcandidate, float);
+DECLARE_SOA_COLUMN(TauzBcandidate, tauzBcandidate, float);
+DECLARE_SOA_COLUMN(CosPBcandidate, cosPBcandidate, float);
+DECLARE_SOA_COLUMN(Chi2Bcandidate, chi2Bcandidate, float);
+
+// Xcandidate columns
+DECLARE_SOA_COLUMN(massXcandidate, MXcandidate, float);
+DECLARE_SOA_COLUMN(pTXcandidate, PtXcandidate, float);
+DECLARE_SOA_COLUMN(rapidityXcandidate, YXcandidate, float);
+DECLARE_SOA_COLUMN(etaXcandidate, EtaXcandidate, float);
+DECLARE_SOA_COLUMN(massJpsicandidate, MJpsicandidate, float);
+DECLARE_SOA_COLUMN(massDipioncandidate, MDipioncandidate, float);
+DECLARE_SOA_COLUMN(pTJpsicandidate, PtJpsicandidate, float);
+DECLARE_SOA_COLUMN(pTDipioncandidate, PtDipioncandidate, float);
+DECLARE_SOA_COLUMN(massDiff, Q, float);
+DECLARE_SOA_COLUMN(angDistPion1, DeltaR1, float);
+DECLARE_SOA_COLUMN(angDistPion2, DeltaR2, float);
+DECLARE_SOA_COLUMN(cosDileptonDipion, CosDileptonDipion, float);
+DECLARE_SOA_COLUMN(dcaxyPion1, DcaXYPion1, float);
+DECLARE_SOA_COLUMN(dcazPion1, DcaZPion1, float);
+DECLARE_SOA_COLUMN(dcaxyPion2, DcaXYPion2, float);
+DECLARE_SOA_COLUMN(dcazPion2, DcaZPion2, float);
+DECLARE_SOA_COLUMN(pTPion1, PtPion1, float);
+DECLARE_SOA_COLUMN(pTPion2, PtPion2, float);
+DECLARE_SOA_COLUMN(dileptonSign, DileptonSign, int);
+DECLARE_SOA_COLUMN(ditrackSign, DitrackSign, int);
+
+} // namespace dqanalysisflags
+
+DECLARE_SOA_TABLE(EventCuts, "AOD", "DQANAEVCUTS", dqanalysisflags::IsEventSelected);
+DECLARE_SOA_TABLE(MixingHashes, "AOD", "DQANAMIXHASH", dqanalysisflags::MixingHash);
+DECLARE_SOA_TABLE(BarrelTrackCuts, "AOD", "DQANATRKCUTS", dqanalysisflags::IsBarrelSelected, dqanalysisflags::IsBarrelSelectedPrefilter);
+DECLARE_SOA_TABLE(MuonTrackCuts, "AOD", "DQANAMUONCUTS", dqanalysisflags::IsMuonSelected);
+DECLARE_SOA_TABLE(Prefilter, "AOD", "DQPREFILTER", dqanalysisflags::IsPrefilterVetoed);
+DECLARE_SOA_TABLE(BmesonCandidates, "AOD", "DQBMESONS", dqanalysisflags::massBcandidate, dqanalysisflags::pTBcandidate, dqanalysisflags::LxyBcandidate, dqanalysisflags::LxyzBcandidate, dqanalysisflags::LzBcandidate, dqanalysisflags::TauxyBcandidate, dqanalysisflags::TauzBcandidate, dqanalysisflags::CosPBcandidate, dqanalysisflags::Chi2Bcandidate);
+DECLARE_SOA_TABLE(XCandidates, "AOD", "DQX3872", dqanalysisflags::massXcandidate, dqanalysisflags::pTXcandidate, dqanalysisflags::rapidityXcandidate, dqanalysisflags::etaXcandidate, dqanalysisflags::massJpsicandidate, dqanalysisflags::massDipioncandidate, dqanalysisflags::pTJpsicandidate, dqanalysisflags::pTDipioncandidate, dqanalysisflags::massDiff, dqanalysisflags::angDistPion1, dqanalysisflags::angDistPion2, dqanalysisflags::cosDileptonDipion, dqanalysisflags::dcaxyPion1, dqanalysisflags::dcazPion1, dqanalysisflags::dcaxyPion2, dqanalysisflags::dcazPion2, dqanalysisflags::pTPion1, dqanalysisflags::pTPion2, dqanalysisflags::dileptonSign, dqanalysisflags::ditrackSign);
+} // namespace o2::aod
 
 using MyEvents = soa::Join<aod::ReducedEvents, aod::ReducedEventsExtended>;
 
@@ -75,16 +134,39 @@ struct taskFwdTrackPid {
   void runFwdTrackPid(TEvent const& event, Muons const& muons, MftTracks const& mftTracks)
   {
     fwdPidAllList.reserve(1);
-    for (const auto& muon : muons) {
-      if (muon.has_matchMFTTrack() && muon.trackType() == 0 && TMath::Abs(muon.fwdDcaX()) < fConfigMaxDCA && TMath::Abs(muon.fwdDcaY()) < fConfigMaxDCA) {
-        auto mftTrack = muon.template matchMFTTrack_as<MyMftTracks>();
-        fwdPidAllList(muon.trackType(), event.posX(), event.posY(), event.posZ(), event.numContrib(), muon.pt(), muon.eta(), muon.phi(), muon.sign(), mftTrack.mftClusterSizesAndTrackFlags(), muon.fwdDcaX(), muon.fwdDcaY(), muon.chi2MatchMCHMID(), muon.chi2MatchMCHMFT());
+   
+    // Muon couples
+    for (auto& [muon1, muon2] : combinations(muons, muons)) { // loop over muons
+      if (isMuonPairsSelected(muon1, muon2, fConfigMaxDCA)) { // skip SS couples or low quality muons
+        continue;
       }
-    }
+
+      VarManager::FillPair<VarManager::kDecayToMuMu, gkMuonFillMap>(muon1, muon2);
+      auto mftTrack1 = muon1.template matchMFTTrack_as<MyMftTracks>();
+      auto mftTrack2 = muon2.template matchMFTTrack_as<MyMftTracks>();
+
+      fwdPidAllList(muon1.trackType(), muon2.trackType(),
+                    event.posX(), event.posY(), event.posZ(), event.numContrib(),
+                    muon1.pt(), muon2.pt(), muon1.eta(), muon2.eta(),
+                    muon1.phi(), muon2.phi(), muon1.sign(), muon2.sign(),
+                    mftTrack1.mftClusterSizesAndTrackFlags(), mftTrack2.mftClusterSizesAndTrackFlags(),
+                    muon1.fwdDcaX(), muon2.fwdDcaX(), muon1.fwdDcaY(), muon2.fwdDcaY(),
+                    muon1.chi2MatchMCHMID(), muon2.chi2MatchMCHMID(), muon1.chi2MatchMCHMFT(), muon2.chi2MatchMCHMFT(),
+                    VarManager::fgValues[VarManager::kMass]);
+    }   // end loop over muons
+    
+    // MFT tracks
     if constexpr (TMatchedOnly == false) {
       for (const auto& mftTrack : mftTracks) {
-        if (TMath::Abs(mftTrack.fwdDcaX()) < fConfigMaxDCA && TMath::Abs(mftTrack.fwdDcaY()) < fConfigMaxDCA) {
-          fwdPidAllList(4, event.posX(), event.posY(), event.posZ(), event.numContrib(), mftTrack.pt(), mftTrack.eta(), mftTrack.phi(), mftTrack.sign(), mftTrack.mftClusterSizesAndTrackFlags(), mftTrack.fwdDcaX(), mftTrack.fwdDcaY(), -999, -999);
+        if (isPidTrackSelected<false>(mftTrack, fConfigMaxDCA)) {
+          fwdPidAllList(4, 4,
+                        event.posX(), event.posY(), event.posZ(), event.numContrib(),
+                        mftTrack.pt(), -999, mftTrack.eta(), -999,
+                        mftTrack.phi(), -999, mftTrack.sign(), -999,
+                        mftTrack.mftClusterSizesAndTrackFlags(), -999,
+                        mftTrack.fwdDcaX(), -999, mftTrack.fwdDcaY(), -999,
+                        -999, -999, -999, -999,
+                        -999);
         }
       }
     }
