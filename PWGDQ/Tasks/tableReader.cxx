@@ -34,7 +34,6 @@
 #include "PWGDQ/Core/HistogramsLibrary.h"
 #include "PWGDQ/Core/CutsLibrary.h"
 #include "PWGDQ/Core/MixingLibrary.h"
-#include "PWGDQ/Utils/utilsMftPid.h"
 #include "DataFormatsParameters/GRPMagField.h"
 #include "Field/MagneticField.h"
 #include "TGeoGlobalMagField.h"
@@ -51,7 +50,6 @@ using namespace o2;
 using namespace o2::framework;
 using namespace o2::framework::expressions;
 using namespace o2::aod;
-using namespace o2::dq_mftpid;
 
 // Some definitions
 namespace o2::aod
