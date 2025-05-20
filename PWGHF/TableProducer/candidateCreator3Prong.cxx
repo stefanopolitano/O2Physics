@@ -784,6 +784,7 @@ struct HfCandidateCreator3ProngExpressions {
 
   // Configuration
   Configurable<bool> rejectBackground{"rejectBackground", true, "Reject particles from background events"};
+  Configurable<bool> tagCorrelatedBkg{"tagCorrelatedBkg", false, "Tag correlated background"};
   Configurable<bool> matchKinkedDecayTopology{"matchKinkedDecayTopology", false, "Match also candidates with tracks that decay with kinked topology"};
   Configurable<bool> matchInteractionsWithMaterial{"matchInteractionsWithMaterial", false, "Match also candidates with tracks that interact with material"};
 
@@ -821,6 +822,24 @@ struct HfCandidateCreator3ProngExpressions {
     hfEvSelMc.addHistograms(registry); // particles monitoring
   }
 
+  /// Check if the decay is resonant
+  /// \tparam arrDaughIndex index of the particle daughters at resonance level
+  /// \tparam arrPDGResonant PDG code of the resonant decay
+  /// \return true if the decay is resonant
+  bool isResonantDecay(std::vector<int> arrDaughIndex, std::array<int, 2> arrPDGResonant) {
+    if (arrDaughIndex.size() == 2) {
+      for (auto iProng = 0u; iProng < arrDaughIndex.size(); ++iProng) {
+        auto daughI = mcParticles.rawIteratorAt(arrDaughIndex[iProng]);
+        arrPDGDaugh[iProng] = std::abs(daughI.pdgCode());
+      }
+      if ((arrPDGDaugh[0] == arrPDGResonant[0] && arrPDGDaugh[1] == arrPDGResonant[1]) || (arrPDGDaugh[0] == arrPDGResonant[1] && arrPDGDaugh[1] == arrPDGResonant[0])) {
+        return true;
+      }
+    } else {
+      return false;
+    }
+  }
+
   /// Performs MC matching.
   template <o2::hf_centrality::CentralityEstimator centEstimator, typename CCs, typename McCollisions>
   void runCreator3ProngMc(aod::TracksWMc const& tracks,
@@ -846,6 +865,11 @@ struct HfCandidateCreator3ProngExpressions {
     std::array<int, 2> arrPDGResonant3 = {102134, kPiPlus};   // Λc± → Λ(1520) π±
     std::array<int, 2> arrPDGResonantDPhiPi = {333, kPiPlus}; // Ds± → Phi π± and D± → Phi π±
     std::array<int, 2> arrPDGResonantDKstarK = {313, kKPlus}; // Ds± → K*(892)0bar K± and D± → K*(892)0bar K±
+
+    if (tagCorrelatedBkg) {
+      std::array<int, 2> arrPDGRD0toKPiPi0 = {321, 211, 111}; // D0 → K- π+ π0
+      std::array<int, 2> arrPDGRD0toRhoK = {321, 211, 111}; // D0 → K- π+ π0
+    }
 
     // Match reconstructed candidates.
     // Spawned table can be used directly
@@ -924,17 +948,22 @@ struct HfCandidateCreator3ProngExpressions {
             swapping = int8_t(std::abs(arrayDaughters[0].mcParticle().pdgCode()) == kPiPlus);
           }
           RecoDecay::getDaughters(mcParticles.rawIteratorAt(indexRec), &arrDaughIndex, std::array{0}, 1);
-          if (arrDaughIndex.size() == 2) {
-            for (auto iProng = 0u; iProng < arrDaughIndex.size(); ++iProng) {
-              auto daughI = mcParticles.rawIteratorAt(arrDaughIndex[iProng]);
-              arrPDGDaugh[iProng] = std::abs(daughI.pdgCode());
-            }
-            if ((arrPDGDaugh[0] == arrPDGResonantDPhiPi[0] && arrPDGDaugh[1] == arrPDGResonantDPhiPi[1]) || (arrPDGDaugh[0] == arrPDGResonantDPhiPi[1] && arrPDGDaugh[1] == arrPDGResonantDPhiPi[0])) {
-              channel = isDplus ? DecayChannelDToKKPi::DplusToPhiPi : DecayChannelDToKKPi::DsToPhiPi;
-            } else if ((arrPDGDaugh[0] == arrPDGResonantDKstarK[0] && arrPDGDaugh[1] == arrPDGResonantDKstarK[1]) || (arrPDGDaugh[0] == arrPDGResonantDKstarK[1] && arrPDGDaugh[1] == arrPDGResonantDKstarK[0])) {
-              channel = isDplus ? DecayChannelDToKKPi::DplusToK0starK : DecayChannelDToKKPi::DsToK0starK;
-            }
+          //if (arrDaughIndex.size() == 2) {
+            //for (auto iProng = 0u; iProng < arrDaughIndex.size(); ++iProng) {
+            //  auto daughI = mcParticles.rawIteratorAt(arrDaughIndex[iProng]);
+            //  arrPDGDaugh[iProng] = std::abs(daughI.pdgCode());
+            //}
+          if (isResonantDecay(arrDaughIndex, arrPDGResonantDPhiPi)) {
+            channel = isDplus ? DecayChannelDToKKPi::DplusToPhiPi : DecayChannelDToKKPi::DsToPhiPi;
+          } else if (isResonantDecay(arrDaughIndex, arrPDGResonantDKstarK)) {
+            channel = isDplus ? DecayChannelDToKKPi::DplusToK0starK : DecayChannelDToKKPi::DsToK0starK;
           }
+            //if ((arrPDGDaugh[0] == arrPDGResonantDPhiPi[0] && arrPDGDaugh[1] == arrPDGResonantDPhiPi[1]) || (arrPDGDaugh[0] == arrPDGResonantDPhiPi[1] && arrPDGDaugh[1] == arrPDGResonantDPhiPi[0])) {
+            //  channel = isDplus ? DecayChannelDToKKPi::DplusToPhiPi : DecayChannelDToKKPi::DsToPhiPi;
+            //} else if ((arrPDGDaugh[0] == arrPDGResonantDKstarK[0] && arrPDGDaugh[1] == arrPDGResonantDKstarK[1]) || (arrPDGDaugh[0] == arrPDGResonantDKstarK[1] && arrPDGDaugh[1] == arrPDGResonantDKstarK[0])) {
+            //  channel = isDplus ? DecayChannelDToKKPi::DplusToK0starK : DecayChannelDToKKPi::DsToK0starK;
+            //}
+          //}
         }
       }
 
