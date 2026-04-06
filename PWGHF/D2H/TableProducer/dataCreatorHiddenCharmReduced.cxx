@@ -83,8 +83,8 @@ struct HfDataCreatorHiddenCharmReduced {
     Configurable<int> tpcNClsCrossedRowsMin{"tpcNClsCrossedRowsMin", 80, "Minimum number of crossed TPC rows"};
     Configurable<double> ptMinTrack{"ptMinTrack", 0.5, "Minimum proton-track pT"};
     Configurable<double> etaMaxTrack{"etaMaxTrack", 0.8, "Maximum proton-track |eta|"};
-    Configurable<float> trackChi2Cut{"trackChi2Cut", 4.f, "Maximum chi2/ncls in TPC"};
-    Configurable<float> trackMinChi2Cut{"trackMinChi2Cut", 0.f, "Minimum chi2/ncls in TPC"};
+    Configurable<float> trackMaxChi2CutTPC{"trackMaxChi2CutTPC", 4.f, "Maximum chi2/ncls in TPC"};
+    Configurable<float> trackMinChi2CutTPC{"trackMinChi2CutTPC", 0.f, "Minimum chi2/ncls in TPC"};
     Configurable<float> trackMaxChi2ITS{"trackMaxChi2ITS", 36.f, "Maximum chi2/ncls in ITS"};
     Configurable<std::vector<double>> binsPtTrack{"binsPtTrack", std::vector<double>{hf_cuts_single_track::vecBinsPtTrack}, "Track pT bin limits for DCA cuts"};
     Configurable<LabeledArray<double>> cutsTrack{"cutsTrack", {hf_cuts_single_track::CutsTrack[0], hf_cuts_single_track::NBinsPtTrack, hf_cuts_single_track::NCutVarsTrack, hf_cuts_single_track::labelsPtTrack, hf_cuts_single_track::labelsCutVarTrack}, "Single-track DCA selections per pT bin"};
@@ -92,7 +92,8 @@ struct HfDataCreatorHiddenCharmReduced {
     Configurable<std::vector<float>> paramsDCAxyPtDep{"paramsDCAxyPtDep", std::vector<float>{0.0010, 0.0080, 0.73}, "Parameters for pT-dependent DCAxy cut: p0, p1, p2 for cut = p0 + p1/pt^p2"};
     Configurable<std::vector<float>> paramsDCAzPtDep{"paramsDCAzPtDep", std::vector<float>{-0.0044, 0.0152, 0.47}, "Parameters for pT-dependent DCAz cut: p0, p1, p2 for cut = p0 + p1/pt^p2"};
     // PID
-    Configurable<float> momForCombinedPid{"momForCombinedPid", 0.75f, "Momentum threshold above which combined TPC+TOF proton PID is used"};
+    Configurable<float> momMinForCombinedPid{"momMinForCombinedPid", 0.75f, "Momentum threshold above which combined TPC+TOF proton PID is used"};
+    Configurable<float> momMaxForPid{"momMaxForPid", 1.5f, "Maximum momentum for PID selection (to avoid misidentification at high p)"};
     Configurable<float> maxNsigmaTofPi{"maxNsigmaTofPi", 2.f, "Maximum pion n-sigma in TOF for proton rejection"};
     Configurable<float> maxNsigmaTofKa{"maxNsigmaTofKa", 2.f, "Maximum kaon n-sigma in TOF for proton rejection"};
     Configurable<float> maxNsigmaTofPr{"maxNsigmaTofPr", 3.f, "Maximum proton n-sigma in TOF"};
@@ -124,7 +125,7 @@ struct HfDataCreatorHiddenCharmReduced {
   Service<o2::ccdb::BasicCCDBManager> ccdb{};
 
   using BCsInfo = soa::Join<aod::BCs, aod::Timestamps, aod::BcSels>;
-  using TracksWithPID = soa::Join<aod::Tracks, aod::TracksExtra, aod::TracksDCA, aod::TrackSelection, aod::pidTPCFullPi, aod::pidTOFFullPi, aod::pidTPCFullKa, aod::pidTOFFullKa, aod::pidTPCFullPr, aod::pidTOFFullPr>;
+  using TracksWithPID = soa::Join<aod::Tracks, aod::TracksCov, aod::TracksExtra, aod::TracksDCA, aod::TrackSelection, aod::pidTPCFullPi, aod::pidTOFFullPi, aod::pidTPCFullKa, aod::pidTOFFullKa, aod::pidTPCFullPr, aod::pidTOFFullPr>;
 
   Preslice<aod::TrackAssoc> trackIndicesPerCollision = aod::track_association::collisionId;
 
@@ -180,7 +181,8 @@ struct HfDataCreatorHiddenCharmReduced {
   template <typename TTrack>
   bool isSelectedPid(TTrack const& track) const
   {
-    const float momForCombinedPid = config.momForCombinedPid.value;
+    const float momMinForCombinedPid = config.momMinForCombinedPid.value;
+    const float momMaxForPid = config.momMaxForPid.value;
     const float maxNsigmaTpcPr = config.maxNsigmaTpcPr.value;
     const float maxNsigmaTpcPi = config.maxNsigmaTpcPi.value;
     const float maxNsigmaTpcKa = config.maxNsigmaTpcKa.value;
@@ -201,8 +203,11 @@ struct HfDataCreatorHiddenCharmReduced {
     bool isProton = false;
     bool rejectAsPion = false;
     bool rejectAsKaon = false;
+    if (mom > momMaxForPid) {
+      return true; // at high momentum, do not apply PID selection to avoid misidentification of protons
+    }
 
-    if (mom < momForCombinedPid) {
+    if (mom < momMinForCombinedPid) {
       isProton = std::abs(nSigmaTPCPr) < maxNsigmaTpcPr;
       rejectAsPion = std::abs(nSigmaTPCPi) < maxNsigmaTpcPi;
       rejectAsKaon = std::abs(nSigmaTPCKa) < maxNsigmaTpcKa;
@@ -232,8 +237,8 @@ struct HfDataCreatorHiddenCharmReduced {
     const int itsNClsMin = config.itsNClsMin.value;
     const double etaMaxTrack = config.etaMaxTrack.value;
     const double ptMinTrack = config.ptMinTrack.value;
-    const float trackChi2Cut = config.trackChi2Cut.value;
-    const float trackMinChi2Cut = config.trackMinChi2Cut.value;
+    const float trackMaxChi2CutTPC = config.trackMaxChi2CutTPC.value;
+    const float trackMinChi2CutTPC = config.trackMinChi2CutTPC.value;
     const float trackMaxChi2ITS = config.trackMaxChi2ITS.value;
     const float dcaXY = track.dcaXY();
     const float dcaZ = track.dcaZ();
@@ -250,7 +255,7 @@ struct HfDataCreatorHiddenCharmReduced {
     if (track.itsNCls() < itsNClsMin) {
       return false;
     }
-    if (track.tpcChi2NCl() > trackChi2Cut || track.tpcChi2NCl() < trackMinChi2Cut) {
+    if (track.tpcChi2NCl() > trackMaxChi2CutTPC || track.tpcChi2NCl() < trackMinChi2CutTPC) {
       return false;
     }
     if (track.itsChi2NCl() > trackMaxChi2ITS) {
@@ -304,7 +309,12 @@ struct HfDataCreatorHiddenCharmReduced {
           continue;
         }
         std::array pVecProton{trk.pVector()};
-        hfTrackLite(trk.globalIndex(), collision.globalIndex(), pVecProton[0], pVecProton[1], pVecProton[2], trk.sign(), static_cast<uint8_t>(TrackType::Proton));
+        hfTrackLite(trk.globalIndex(), collision.globalIndex(),
+                    trk.x(), trk.alpha(), trk.y(), trk.z(), trk.snp(), trk.tgl(), trk.signed1Pt(),
+                    trk.cYY(), trk.cZY(), trk.cZZ(), trk.cSnpY(), trk.cSnpZ(), trk.cSnpSnp(),
+                    trk.cTglY(), trk.cTglZ(), trk.cTglSnp(), trk.cTglTgl(), trk.c1PtY(), trk.c1PtZ(),
+                    trk.c1PtSnp(), trk.c1PtTgl(), trk.c1Pt21Pt2(),
+                    pVecProton[0], pVecProton[1], pVecProton[2], trk.sign(), static_cast<uint8_t>(TrackType::Proton));
         selectedTrackIds.push_back(trk.globalIndex());
         if (config.fillHistograms) {
           registry.fill(HIST("hPtCutsProton"), trk.pt());

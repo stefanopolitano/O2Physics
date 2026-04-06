@@ -1661,7 +1661,10 @@ DECLARE_SOA_TABLE(HcSelTracks, "AOD", "HCSELTRACKS",
                   // Indices
                   hf_track_index_reduced::TrackId,
                   hf_track_index_reduced::HfRedCollisionId,
-                  // Static
+                  // Track parameters and covariance for vertexing
+                  HFTRACKPAR_COLUMNS,
+                  HFTRACKPARCOV_COLUMNS,
+                  // Static kinematics and particle tag
                   hf_track_vars_reduced::Px,
                   hf_track_vars_reduced::Py,
                   hf_track_vars_reduced::Pz,
